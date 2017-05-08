@@ -1,0 +1,16 @@
+{
+  "name": "anexia-it/phpqueues",
+  "description": "Efficient concurrent queues in PHP",
+  "keywords": ["queue", "FIFO", "buffer"],
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Tris Forster"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "phpqueues\\": "."
+    }
+  }
+}
