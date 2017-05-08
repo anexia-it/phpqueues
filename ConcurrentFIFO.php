@@ -35,7 +35,7 @@ class ConcurrentFIFO {
 
 	/**
 	 * Open or create a new list
-	 * 
+	 *
 	 * @param string $filename path to file
 	 * @throws Exception if the open fails for any reason
 	 */
@@ -51,20 +51,22 @@ class ConcurrentFIFO {
 	 * Returns an assoc array with the elements 'start', 'end', 'len' and 'checksum'
 	 *
 	 * @access private
-	 * @return multitype:int 
+	 * @return multitype:int
 	 */
 	function _read_index() {
 		fseek($this->fp, 0);
 		$buffer = fread($this->fp, self::INDEX_SIZE);
 		if(!$buffer) return null;
 		$data = unpack(self::INDEX_UNPACK, $buffer);
-		if(($data['start'] ^ $data['end'] ^ $data['len']) != $data['checksum']) throw new Exception("Index corrupt - rebuild required");
+		if(($data['start'] ^ $data['end'] ^ $data['len']) != $data['checksum']) {
+		    throw new Exception("Index corrupt - rebuild required");
+        }
 		return $data;
 	}
 
 	/**
 	 * Writes the list index including a checksum.
-	 * 
+	 *
 	 * @access private
 	 * @param int $start first item pointer
 	 * @param int $end end of data pointer
@@ -78,7 +80,7 @@ class ConcurrentFIFO {
 
 	/**
 	 * Read an integer from the datafile according to the format provided.
-	 * 
+	 *
 	 * @access private
 	 * @param string $format one of the unpack() format strings
 	 * @param int $size number of bytes the format string requires
@@ -93,12 +95,14 @@ class ConcurrentFIFO {
 
 	/**
 	 * Get the first available from the queue, or null if the queue is empty
-	 * 
+	 *
 	 * @return string
 	 */
 	function dequeue() {
 		// need an exclusive lock
-		flock($this->fp, LOCK_EX) or die('Failed to get lock');
+        if (!flock($this->fp, LOCK_EX)) {
+            throw new Exception('Failed to get lock');
+        }
 		$index = $this->_read_index();
 
 		if($index) {
@@ -108,7 +112,7 @@ class ConcurrentFIFO {
 			// TODO: should be able to recover from zero data length here
 			if(!$l) throw new Exception("Zero data length");
 			$data = fread($this->fp, $l);
-				
+
 			$p = ftell($this->fp);
 			// check if there is any more data
 			if($p < $index['end']) {
@@ -132,7 +136,7 @@ class ConcurrentFIFO {
 
 	/**
 	 * Add an item to the queue.
-	 * 
+	 *
 	 * @param unknown_type $data
 	 * @throws Exception if there is no data to add
 	 * @return int the number of items in the queue after this operation
@@ -142,9 +146,11 @@ class ConcurrentFIFO {
 		$c = strlen($data);
 
 		if($c == 0) throw new Exception("No data");
-		
+
 		// get exclusive lock
-		flock($this->fp, LOCK_EX) or die('Failed to get lock');
+        if (!flock($this->fp, LOCK_EX)) {
+            throw new Exception('Failed to get lock');
+        }
 
 		// read and update the index
 		$index = $this->_read_index();
@@ -175,68 +181,78 @@ class ConcurrentFIFO {
 	 * @return boolean
 	 */
 	function is_empty() {
-		flock($this->fp, LOCK_SH) or die('Failed to get lock');
+	    if (!flock($this->fp, LOCK_SH)) {
+	        throw new Exception('Failed to get lock');
+        }
 		$index = $this->_read_index();
 		flock($this->fp, LOCK_UN);
 		return ($index === null);
 	}
-	
+
 	/**
 	 * Get the number of items currently in the queue
-	 * 
+	 *
 	 * @return int
 	 */
 	function count() {
-		flock($this->fp, LOCK_SH) or die('Failed to get lock');
+        if (!flock($this->fp, LOCK_SH)) {
+            throw new Exception('Failed to get lock');
+        }
 		$index = $this->_read_index();
 		flock($this->fp, LOCK_UN);
 		return ($index === null) ? 0 : $index['len'];
 	}
 
 	/**
-	 * Remove all elements from the queue.  
+	 * Remove all elements from the queue.
 	 * Actually just truncates the file.
 	 */
 	function clear() {
-		flock($this->fp, LOCK_EX) or die('Failed to get lock');
+        if (!flock($this->fp, LOCK_EX)) {
+            throw new Exception('Failed to get lock');
+        }
 		ftruncate($this->fp, 0);
 		flock($this->fp, LOCK_UN);
 	}
-	
+
 	/**
 	 * Delete the queue entirely.
 	 * Note any further attempts to modify the queue will result in an exception.
 	 */
 	function delete() {
-		flock($this->fp, LOCK_EX) or die('Failed to get lock');
+        if (!flock($this->fp, LOCK_EX)) {
+            throw new Exception('Failed to get lock');
+        }
 		fclose($this->fp);
 		unlink($this->filename);
 		$this->fp = null;
 	}
-	
+
 	/**
 	 * Return an array of items from the queue. Does not modify the queue in any way.
-	 * 
+	 *
 	 * @param int $offset skip $offset items at the start
 	 * @param int $count return up to $count items
 	 * @return multitype:string
 	 */
 	function items($offset=0, $count=0) {
-		flock($this->fp, LOCK_SH) or die('Failed to get lock');
-		
+        if (!flock($this->fp, LOCK_SH)) {
+            throw new Exception('Failed to get lock');
+        }
+
 		$index = $this->_read_index();
 		if(!$index) return array();
-		
+
 		$result = array();
 		$p = $index['start'];
 		while($p < $index['end']) {
 			$l = $this->_read_int(self::LENGTH_FORMAT, self::LENGTH_SIZE);
 			if(!$l) break;
-			
+
 			$data = fread($this->fp, $l);
 			$p += $l + self::LENGTH_SIZE;
 			assert($p == ftell($this->fp));
-			
+
 			if($offset) {
 				$offset--;
 			} else {
@@ -247,7 +263,7 @@ class ConcurrentFIFO {
 				}
 			}
 		}
-		
+
 		flock($this->fp, LOCK_UN);
 		return $result;
 	}
@@ -257,7 +273,7 @@ class ConcurrentFIFO {
 	 * and truncating to the new length.  This is currently an unprotected operation so
 	 * if this crashes mid operation the the data will corrupt.  The parameters are the current
 	 * values from the index.
-	 * 
+	 *
 	 * @access private
 	 * @todo protect this operation
 	 * @param int $start current start pointer
@@ -298,12 +314,12 @@ class ConcurrentFIFO {
 		while(true) {
 			$data = $this->dequeue();
 			if($data !== null) return $data;
-				
+
 			usleep($this->poll_frequency);
 			if($timeout && (microtime(true) > $start + $timeout)) return null;
 		}
 	}
-	
+
 	function __toString() {
 		return "<FIFO: {$this->filename}>";
 	}
