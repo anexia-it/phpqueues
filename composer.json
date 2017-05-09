@@ -2,6 +2,7 @@
   "name": "anexia-it/phpqueues",
   "description": "Efficient concurrent queues in PHP",
   "keywords": ["queue", "FIFO", "buffer"],
+  "type": "library",
   "license": "MIT",
   "authors": [
     {
@@ -12,5 +13,9 @@
     "psr-4": {
       "phpqueues\\": "."
     }
-  }
+  },
+  "require": {
+    "php": ">=5.4.0"
+  },
+  "version": "0.1.2"
 }
