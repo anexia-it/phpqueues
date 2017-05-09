@@ -21,7 +21,7 @@ class ConcurrentFIFO {
 
     const INDEX_FORMAT = 'V4';
     const INDEX_UNPACK = 'Vstart/Vend/Vlen/Vchecksum';
-    const INDEX_SIZE = 16;
+    const INDEX_SIZE = 32;
 
     const LENGTH_FORMAT = 'V';
     const LENGTH_SIZE = 4;
